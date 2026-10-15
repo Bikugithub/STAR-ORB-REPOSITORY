@@ -42,7 +42,8 @@
       background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
       color: var(--text);
       transition: background 0.6s ease, color 0.6s ease;
-      overflow: hidden;
+      /* FIX 1: Allow vertical scrolling, hide horizontal */
+      overflow-x: hidden; 
     }
 
     body {
@@ -66,7 +67,6 @@
       box-shadow: 0 0 12px rgba(255,255,255,0.8);
       animation: twinkle var(--duration) ease-in-out infinite alternate;
       opacity: 0.8;
-      transform: translate3d(0,0,0);
     }
 
     @keyframes twinkle {
@@ -76,11 +76,12 @@
     }
 
     .orb {
-      position: absolute;
+      position: fixed;
       border-radius: 50%;
       filter: blur(16px);
       opacity: 0.8;
       pointer-events: none;
+      z-index: 0;
     }
 
     .orb.one {
@@ -322,24 +323,47 @@
       font-size: 0.7rem;
     }
 
+    /* FIX 2: Dynamic Sparkle Particles CSS */
+    .sparkle-particle {
+      position: fixed;
+      border-radius: 50%;
+      background: #ffffff;
+      pointer-events: none;
+      z-index: 100;
+      animation: explode 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    /* Screen Flash for "Pulse the sky" */
+    body.pulse::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: var(--accent);
+      z-index: 999;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+      animation: skyScreenFlash 0.7s ease-out forwards;
+    }
+
     body.pulse .planet-card {
       animation: skyFlash 0.7s ease;
     }
 
-    /* Fixed animation to combine the JavaScript pointer tracking and the CSS float */
     @keyframes floatPlanet {
-      0%, 100% { 
-        transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7)); 
-      }
-      50% { 
-        transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7 - 12px)); 
-      }
+      0%, 100% { transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7)); }
+      50% { transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7 - 12px)); }
     }
 
     @keyframes skyFlash {
       0% { transform: scale(1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 18px 50px rgba(0,0,0,0.22); }
       35% { transform: scale(1.04); box-shadow: 0 0 28px rgba(124, 199, 255, 0.38), 0 18px 60px rgba(0,0,0,0.28); }
       100% { transform: scale(1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 18px 50px rgba(0,0,0,0.22); }
+    }
+
+    @keyframes skyScreenFlash {
+      0% { opacity: 0; }
+      20% { opacity: 0.4; }
+      100% { opacity: 0; }
     }
 
     @keyframes spin {
@@ -352,21 +376,23 @@
       50% { transform: rotate(180deg) translateX(-12px); }
       100% { transform: rotate(360deg) translateX(0); }
     }
+    
+    @keyframes explode {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+    }
 
     @media (max-width: 820px) {
       .app {
         padding-top: 24px;
       }
-
       .hero {
         grid-template-columns: 1fr;
         gap: 18px;
       }
-
       .planet-panel {
         min-height: 320px;
       }
-
       .quote-panel {
         margin-top: 12px;
       }
@@ -457,9 +483,47 @@
       sparkCount.textContent = String(Math.floor(Math.random() * 90) + 20);
     }
 
+    // FIX 2: Function to create a burst of visual sparks
+    function generateSparksBurst() {
+      const amount = 40;
+      const colors = ['#7cc7ff', '#ffc857', '#9b8cff', '#ffffff'];
+      
+      for (let i = 0; i < amount; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'sparkle-particle';
+        
+        // Random size for each spark
+        const size = Math.random() * 5 + 3;
+        spark.style.width = `${size}px`;
+        spark.style.height = `${size}px`;
+        
+        // Start in the center of the screen
+        spark.style.left = '50%';
+        spark.style.top = '40%';
+        
+        // Calculate random scatter direction and distance
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = Math.random() * 300 + 50; 
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+        
+        spark.style.setProperty('--tx', `${tx}px`);
+        spark.style.setProperty('--ty', `${ty}px`);
+        
+        // Give it a random glowing color
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        spark.style.boxShadow = `0 0 15px 3px ${randomColor}`;
+        
+        document.body.appendChild(spark);
+        
+        // Remove the spark from HTML after animation finishes
+        setTimeout(() => spark.remove(), 800);
+      }
+    }
+
     function pulseSky() {
       document.body.classList.remove('pulse');
-      void document.body.offsetWidth;
+      void document.body.offsetWidth; // Triggers reflow
       document.body.classList.add('pulse');
       setTimeout(() => document.body.classList.remove('pulse'), 700);
     }
@@ -470,12 +534,11 @@
 
     sparkButton.addEventListener('click', () => {
       updateQuote();
-      pulseSky();
+      generateSparksBurst(); // Now triggers the visual explosion!
     });
 
     pulseButton.addEventListener('click', pulseSky);
 
-    // Javascript now only updates the CSS variables and leaves the styling to the CSS file
     document.body.addEventListener('pointermove', (event) => {
       const x = (event.clientX / window.innerWidth - 0.5) * 16;
       const y = (event.clientY / window.innerHeight - 0.5) * 16;
@@ -488,3 +551,4 @@
   </script>
 </body>
 </html>
+  
