@@ -16,6 +16,8 @@
       --accent-2: #ffc857;
       --accent-3: #9b8cff;
       --shadow: rgba(78, 122, 255, 0.35);
+      --pointer-x: 0px;
+      --pointer-y: 0px;
     }
 
     body.light {
@@ -324,9 +326,14 @@
       animation: skyFlash 0.7s ease;
     }
 
+    /* Fixed animation to combine the JavaScript pointer tracking and the CSS float */
     @keyframes floatPlanet {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-12px); }
+      0%, 100% { 
+        transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7)); 
+      }
+      50% { 
+        transform: translate(calc(var(--pointer-x, 0px) * 0.8), calc(var(--pointer-y, 0px) * 0.7 - 12px)); 
+      }
     }
 
     @keyframes skyFlash {
@@ -468,15 +475,12 @@
 
     pulseButton.addEventListener('click', pulseSky);
 
+    // Javascript now only updates the CSS variables and leaves the styling to the CSS file
     document.body.addEventListener('pointermove', (event) => {
       const x = (event.clientX / window.innerWidth - 0.5) * 16;
       const y = (event.clientY / window.innerHeight - 0.5) * 16;
       document.documentElement.style.setProperty('--pointer-x', `${x}px`);
       document.documentElement.style.setProperty('--pointer-y', `${y}px`);
-      const planet = document.querySelector('.planet');
-      if (planet) {
-        planet.style.transform = `translate(${x * 0.8}px, ${y * 0.7}px)`;
-      }
     });
 
     createStars();
